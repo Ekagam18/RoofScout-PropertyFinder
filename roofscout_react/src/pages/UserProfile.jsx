@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { supabase } from "../supabase";
 
 function UserProfile() {
   const navigate = useNavigate();
@@ -42,25 +43,36 @@ function UserProfile() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const { name, address, phone, email } = formData;
-    
-    const userProfileData = {
-      name,
-      address,
-      phone,
-      email
-    };
-    
-    localStorage.setItem('userProfile', JSON.stringify(userProfileData));
-    
-    if (profileImage && profileImage.startsWith('data:')) {
-      localStorage.setItem('userProfileImage', profileImage);
+
+    // local storage update
+    localStorage.setItem(
+      "userProfile",
+      JSON.stringify({ name, address, phone, email })
+    );
+
+    if (profileImage && profileImage.startsWith("data:")) {
+      localStorage.setItem("userProfileImage", profileImage);
     }
-    
-    alert('Profile changes saved!');
-    setFormData({ ...formData, password: '' });
+
+    // ------------ SUPABASE USERNAME UPDATE ------------
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData.session;
+
+    if (session?.user) {
+      await supabase
+        .from("username")
+        .update({ username: name })
+        .eq("id", session.user.id);
+    }
+
+    // 🔥 Notify Navbar to refresh username
+    window.dispatchEvent(new Event("usernameUpdated"));
+
+    alert("Profile Updated Successfully!");
   };
+
 
   return (
     <div className="bg-gradient-to-br from-blue-100 via-green-100 to-pink-200 min-h-screen">

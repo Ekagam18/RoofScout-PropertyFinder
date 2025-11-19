@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Sun, Moon, Menu } from 'lucide-react'; 
+import { supabase } from "../supabase";
+
 
 function Rent() {
   const [searchParams] = useSearchParams();
@@ -75,68 +77,55 @@ function Rent() {
     setFormData({ ...formData, [e.target.id]: e.target.value });
   };
   
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const { title, type, state, address, bhk, furnishing, rent, deposit, amenities } = formData;
-    const photos = e.target.propertyPhotos?.files || [];
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    // --- (FIX 1) Authentication Check ---
-    const currentOwner = sessionStorage.getItem('loggedUser');
-    if (!currentOwner) {
-      alert('You must be logged in to list a property.');
-      navigate('/login');
-      return;
-    }
+  const { title, type, state, address, bhk, furnishing, rent, deposit, amenities } = formData;
+  const photos = e.target.propertyPhotos?.files || [];
 
-    let existingProperties = JSON.parse(localStorage.getItem('userProperties')) || [];
+  // 1️⃣ Auth check (Supabase)
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData.session;
 
-    if (isEditing) {
-      const propertyIndex = existingProperties.findIndex(prop => prop.id === Number(editId));
-      if (propertyIndex > -1) {
-        existingProperties[propertyIndex] = {
-          ...existingProperties[propertyIndex],
-          title,
-          propertyType: type,
-          state: state, // Update state
-          address,
-          bhk,
-          furnishing,
-          price: rent,
-          deposit,
-          amenities,
-          details: `${bhk}, ${furnishing}`,
-          photoCount: photos.length > 0 ? photos.length : existingProperties[propertyIndex].photoCount
-        };
-        alert('Property Updated Successfully!');
-      } else {
-        alert('Error: Could not update property.');
-        return;
-      }
-    } else {
-      const newProperty = {
-        id: Date.now(),
-        type: 'Rent',
-        title,
-        propertyType: type,
-        state: state.toLowerCase(), // Save state
-        address,
-        bhk,
-        furnishing,
-        price: rent,
-        deposit,
-        amenities,
-        details: `${bhk}, ${furnishing}`,
-        photoCount: photos.length,
-        owner: currentOwner, // Save Owner
-        status: 'Active'
-      };
-      existingProperties.push(newProperty);
-      alert('Property for Rent Submitted and Saved!');
-    }
+  if (!session?.user) {
+    alert("You must be logged in to list a property.");
+    navigate("/login");
+    return;
+  }
 
-    localStorage.setItem('userProperties', JSON.stringify(existingProperties));
-    navigate('/userdashboard');
-  };
+  const userId = session.user.id;
+
+  // 2️⃣ Insert into Supabase(properties)
+  const { error } = await supabase.from("properties").insert([
+    {
+      owner_id: userId,
+      title,
+      type: "rent",                        // 🔥 stored lowercase just like "sell"
+      price: rent,
+      deposit,
+      location: `${address}, ${state}`,
+      area: null,
+      image: null,
+
+      // 🔥 Rental-specific fields
+      bhk,
+      furnishing,
+      amenities,
+      desc: `${bhk}, ${furnishing}`,        // used in UI
+    },
+  ]);
+
+  if (error) {
+    console.log("Supabase Insert Error:", error);
+    alert("Error saving rental property");
+    return;
+  }
+
+  alert("Rental property submitted!");
+
+  navigate("/userdashboard");
+};
+
 
   // --- Utility Classes for Dark Mode Fixes ---
   const inputClass = "p-2 border-2 rounded h-12 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors";

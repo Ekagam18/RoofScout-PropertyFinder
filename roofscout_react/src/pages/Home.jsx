@@ -5,6 +5,7 @@ import Footer from "../components/Footer";
 import { motion } from "framer-motion";
 import CountUp from "react-countup";
 
+/* ─── PROPERTIES LIST ─────────────────────────────────────────────── */
 const properties = [
   {
     id: "P001",
@@ -29,18 +30,54 @@ const properties = [
   },
 ];
 
+/* ─── TESTIMONIALS LIST ───────────────────────────────────────────── */
+const testimonials = [
+  {
+    text: "Don’t let little things stop you from moving forward. Stay focused, stay consistent, and you’ll overcome challenges.",
+    image:
+      "https://thumbs.dreamstime.com/b/beautiful-happy-family-standing-front-their-new-house-parnets-holding-children-keys-focus-keys-family-holding-239824741.jpg",
+    avatar: "https://randomuser.me/api/portraits/men/32.jpg",
+    name: "Palbo & Emma",
+  },
+  {
+    text: "RoofScout made buying our first home so smooth! Highly professional and trustworthy service.",
+    image:
+      "https://thumbs.dreamstime.com/b/young-family-new-apartment-happy-people-moving-boxes-146836836.jpg",
+    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
+    name: "Riya & Manish",
+  },
+  {
+    text: "The rental process was simple and quick. Found the perfect home in just 2 days!",
+    image:
+      "https://thumbs.dreamstime.com/b/happy-family-children-moving-house-44488274.jpg",
+    avatar: "https://randomuser.me/api/portraits/men/12.jpg",
+    name: "Sagar Verma",
+  },
+];
+
 export default function Home() {
   const [counters, setCounters] = useState({ homes: 0, cities: 0, buyers: 0 });
+  const [currentIndex, setCurrentIndex] = useState(0);
 
+  /* COUNTERS ANIMATION */
   useEffect(() => {
     setCounters({ homes: 5000, cities: 120, buyers: 200 });
+  }, []);
+
+  /* AUTO SLIDER */
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % testimonials.length);
+    }, 3500);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="flex flex-col min-h-screen font-sans bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-500">
       <Navbar />
 
-      {/* HERO */}
+      {/* ─── HERO ───────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-green-50 to-pink-50 dark:from-gray-800 dark:via-gray-900 dark:to-black py-16 px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 items-center gap-10">
           <motion.div
@@ -50,20 +87,18 @@ export default function Home() {
           >
             <h1 className="text-5xl md:text-6xl font-extrabold leading-tight">
               Your{" "}
-              <span className="text-blue-600 dark:text-teal-400">Property</span>{" "}
+              <span className="text-blue-600 dark:text-teal-400">
+                Property
+              </span>{" "}
               Companion.
             </h1>
+
             <p className="mt-4 text-gray-700 dark:text-gray-300 text-lg max-w-xl">
               Rent • Sell • Purchase — all at your fingertips. RoofScout
               simplifies property discovery and management with seamless UX.
             </p>
 
             <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-3">
-              {/* <input
-                type="email"
-                placeholder="Enter your email"
-                className="w-full sm:w-[360px] p-3 rounded-lg border border-gray-300 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              /> */}
               <button className="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2 rounded-lg font-semibold shadow-md transition">
                 Get Started — Free
               </button>
@@ -89,7 +124,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* VIDEO */}
+      {/* ─── VIDEO ─────────────────────────────────────── */}
       <section className="py-10 px-4">
         <div className="max-w-6xl mx-auto rounded-2xl overflow-hidden relative shadow-lg">
           <video
@@ -109,7 +144,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* COUNTERS */}
+      {/* ─── COUNTERS ───────────────────────────────────── */}
       <section className="py-12 px-4">
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
           {[["Homes Provided", counters.homes], ["Cities Covered", counters.cities], ["Happy Buyers", counters.buyers]].map(
@@ -131,47 +166,59 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SERVICES */}
-      <section
-        className="p-10 bg-cover bg-center rounded-lg text-white"
-        style={{ backgroundImage: "url('/service.jpg')" }}
-      >
-        <div className="bg-black/60 p-10 rounded-2xl">
-          <h3 className="text-yellow-400 text-3xl font-bold italic mb-8 text-center">
-            Our Services
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Easy Buying Process",
-                desc: "Find verified homes with transparent pricing and easy EMI options.",
-              },
-              {
-                title: "Easy Rental Process",
-                desc: "Hassle-free renting with verified landlords and secure agreements.",
-              },
-              {
-                title: "Easy Selling Process",
-                desc: "Reach thousands of buyers with optimized listings and expert support.",
-              },
-            ].map((s) => (
-              <div
-                key={s.title}
-                className="bg-white/80 dark:bg-gray-800 text-black dark:text-gray-100 p-6 rounded-xl shadow-lg hover:scale-105 transition-transform"
-              >
-                <h3 className="text-xl font-semibold mb-2">{s.title}</h3>
-                <p>{s.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* ─── SERVICES ───────────────────────────────────── */}
+      
+<section
+  className="p-10 bg-cover bg-center rounded-lg text-white"
+  style={{ backgroundImage: "url('/service.jpg')" }}
+>
+  {/* The container that was previously the opaque black box is now removed or simplified */}
+  <div className="p-4">
+    <h3 className="text-yellow-400 text-3xl font-bold italic mb-8 text-center tracking-wide text-shadow-lg">
+      {/* Added text-shadow-lg to the h3 for better readability on busy background */}
+      Our Services
+    </h3>
 
-      {/* PROPERTIES */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+      {[
+        {
+          title: "Easy Buying Process",
+          desc: "Find verified homes with transparent pricing and easy EMI options.",
+        },
+        {
+          title: "Easy Rental Process",
+          desc: "Hassle-free renting with verified landlords and secure agreements.",
+        },
+        {
+          title: "Easy Selling Process",
+          desc: "Reach thousands of buyers with optimized listings and expert support.",
+        },
+      ].map((s) => (
+        <div
+          key={s.title}
+          // The fix is primarily here: using a transparent background with backdrop-blur
+          className="bg-white/30 dark:bg-gray-900/40 backdrop-blur-md text-black dark:text-white p-6 rounded-xl shadow-2xl hover:scale-[1.03] transition-transform duration-300 border border-white/20"
+        >
+          <h3 className="text-2xl font-bold mb-3 text-white">
+            {/* Made title white for better contrast against the card background */}
+            {s.title}
+          </h3>
+          <p className="text-white">
+            {/* Ensured the body text is also white for contrast */}
+            {s.desc}
+          </p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+      {/* ─── PROPERTIES ─────────────────────────────────── */}
       <section className="py-12 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold italic">Our Properties</h2>
+
             <Link
               to="/allproperties"
               className="text-blue-700 dark:text-blue-400 font-semibold underline"
@@ -195,6 +242,7 @@ export default function Home() {
                 <div className="bg-black/50 p-4 rounded-b-xl">
                   <span className="font-semibold">{p.title}</span>
                   <span className="block text-sm font-normal">{p.subtitle}</span>
+
                   <div className="border-2 border-blue-600 rounded-xl px-4 py-1 w-fit bg-white text-green-700 mt-2">
                     {p.priceText}
                   </div>
@@ -205,36 +253,47 @@ export default function Home() {
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
+      {/* ─── TESTIMONIAL SLIDER ─────────────────────────── */}
       <section className="py-16 px-8 border-t-2 border-gray-200 dark:border-gray-700 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
         <h2 className="text-blue-600 dark:text-teal-400 text-3xl font-extrabold mb-12 text-center tracking-wide">
           TESTIMONIALS
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
-          <motion.img
-            whileHover={{ scale: 1.05 }}
-            src="https://thumbs.dreamstime.com/b/beautiful-happy-family-standing-front-their-new-house-parnets-holding-children-keys-focus-keys-family-holding-239824741.jpg"
-            alt="Happy Family"
-            className="rounded-xl shadow-xl w-full object-cover"
-          />
+
+        <div className="relative overflow-hidden max-w-6xl mx-auto">
           <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white dark:bg-gray-800 bg-opacity-80 backdrop-blur-sm rounded-xl shadow-lg p-6"
+            key={currentIndex}
+            initial={{ opacity: 0, x: 80 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -80 }}
+            transition={{ duration: 0.6 }}
+            className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center"
           >
-            <p className="italic text-gray-700 dark:text-gray-300 text-lg leading-relaxed">
-              "Don’t let little things stop you from moving forward. Stay
-              focused, stay consistent, and you’ll overcome challenges."
-            </p>
-            <div className="flex items-center gap-4 mt-6">
-              <img
-                src="https://randomuser.me/api/portraits/men/32.jpg"
-                alt="Client"
-                className="w-12 h-12 rounded-full shadow-md border"
-              />
-              <span className="font-semibold text-gray-900 dark:text-gray-100 text-lg">
-                Palbo & Emma
-              </span>
-            </div>
+            <motion.img
+              whileHover={{ scale: 1.05 }}
+              src={testimonials[currentIndex].image}
+              alt="Happy Family"
+              className="rounded-xl shadow-xl w-full object-cover h-[350px]"
+            />
+
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="bg-white dark:bg-gray-800 bg-opacity-80 backdrop-blur-sm rounded-xl shadow-lg p-6"
+            >
+              <p className="italic text-gray-700 dark:text-gray-300 text-lg leading-relaxed">
+                "{testimonials[currentIndex].text}"
+              </p>
+
+              <div className="flex items-center gap-4 mt-6">
+                <img
+                  src={testimonials[currentIndex].avatar}
+                  alt="Client"
+                  className="w-12 h-12 rounded-full shadow-md border"
+                />
+                <span className="font-semibold text-gray-900 dark:text-gray-100 text-lg">
+                  {testimonials[currentIndex].name}
+                </span>
+              </div>
+            </motion.div>
           </motion.div>
         </div>
       </section>

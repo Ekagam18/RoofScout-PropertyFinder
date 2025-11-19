@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Sun, Moon } from 'lucide-react'; 
+import { supabase } from "../supabase";
 
 function PostProperty() {
   const [selectedPage, setSelectedPage] = useState('sell');
@@ -28,20 +29,17 @@ function PostProperty() {
     } catch {}
   }, [theme]);
 
-  const handleStart = () => {
-    // Note: The original code checks for 'loginText' AND 'loggedUser'. 
-    // We assume 'loggedUser' is sufficient for a logged-in check.
-    const loggedUser = sessionStorage.getItem('loggedUser');
-    const isLoggedIn = loggedUser;
+ const handleStart = async () => {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData.session;
 
-    if (isLoggedIn) {
-      // Direct navigation to the selected property page (Sell, Rent, or PG)
-      navigate(`/${selectedPage}`);
-    } else {
-      // Redirect to login, specifying where to go after successful login
-      navigate(`/login?redirect=${selectedPage}`);
-    }
-  };
+  if (!session?.user) {
+    navigate(`/login?redirect=${selectedPage}`);
+    return;
+  }
+
+  navigate(`/${selectedPage}`);
+};
 
   return (
     <div className="dark:bg-gray-900 min-h-screen transition-colors duration-300">
