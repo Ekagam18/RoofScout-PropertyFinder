@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { Sun, Moon, Menu } from 'lucide-react'; 
 
 function Rent() {
   const [searchParams] = useSearchParams();
@@ -7,6 +8,18 @@ function Rent() {
   const editId = searchParams.get('editId');
   const [isEditing, setIsEditing] = useState(false);
   
+  // 1. --- DARK MODE STATE AND LOGIC ---
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('rs-theme') || 'light'; }
+    catch { return 'light'; }
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    theme === 'dark' ? root.classList.add('dark') : root.classList.remove('dark');
+    try { localStorage.setItem('rs-theme', theme); } catch {}
+  }, [theme]);
+
   const [formData, setFormData] = useState({
     title: '',
     type: 'Apartment / Flat',
@@ -58,6 +71,10 @@ function Rent() {
     });
   };
 
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.id]: e.target.value });
+  };
+  
   const handleSubmit = (e) => {
     e.preventDefault();
     const { title, type, state, address, bhk, furnishing, rent, deposit, amenities } = formData;
@@ -121,49 +138,98 @@ function Rent() {
     navigate('/userdashboard');
   };
 
+  // --- Utility Classes for Dark Mode Fixes ---
+  const inputClass = "p-2 border-2 rounded h-12 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors";
+  const textareaClass = "border-2 p-2 rounded w-full dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors";
+  const labelClass = "font-semibold text-gray-600 dark:text-gray-300 mb-1";
+  const sectionTitleClass = "text-2xl font-bold flex items-center gap-2 text-gray-700 dark:text-gray-300";
+  const sectionBgClass = "shadow-lg m-4 rounded-lg p-4";
+
   return (
-    <div className="bg-gradient-to-r from-blue-500 via-blue-300 to-blue-100 min-h-screen">
-      <div className="flex items-center justify-center py-10 px-4">
-        <div className="w-full md:w-1/2 bg-white rounded-lg shadow-2xl">
-          <div className="text-center p-6">
-            <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-blue-700 via-indigo-600 to-fuchsia-600 bg-clip-text text-transparent">
-              List Your Property for Rent
+    <div className={`transition-colors duration-300 ${
+        theme === 'dark' ? 'bg-gray-900 text-gray-100' : 'bg-gradient-to-br from-blue-50 via-green-50 to-pink-50 min-h-screen'
+    }`}>
+      
+      {/* --- NEW NAVBAR --- */}
+      <div className={`backdrop-blur-md ${
+        theme === 'dark' ? 'bg-gray-800/70' : 'bg-white/60'
+      } sticky top-0 z-50 flex justify-between items-center h-20 px-6 shadow-sm`}>
+
+        <div className="flex items-center gap-4">
+          <Link to="/userdashboard" className="p-2 rounded hover:bg-gray-200/20 dark:hover:bg-gray-700/20">
+            <Menu size={20} />
+          </Link>
+
+          <div className="flex items-center gap-3">
+            <img src="/logoRS.jpg" className="h-12 w-12 rounded-full" alt="RoofScout" />
+            <div>
+              <h1 className="text-xl font-bold tracking-tight">
+                <Link to="/">
+                  <span className="text-yellow-400">Roof</span>
+                  <span className="text-blue-500">Scout</span>
+                </Link>
+              </h1>
+              <p className="text-sm opacity-70">Rent Property</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          
+          {/* DARK MODE BUTTON */}
+          <button 
+            onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} 
+            className="px-3 py-2 border rounded hover:shadow bg-gray-100 dark:bg-gray-700 dark:border-gray-600 transition-colors duration-200"
+          >
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+        </div>
+      </div>
+      
+      {/* --- MAIN FORM CONTENT --- */}
+      <div className="flex items-start justify-center py-10 px-4">
+        <div className="w-full md:w-1/2 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl">
+          <div className="text-center p-6 border-b border-gray-100 dark:border-gray-700">
+            <h1 className="text-2xl md:text-4xl font-extrabold bg-gradient-to-r from-blue-700 via-indigo-600 to-fuchsia-600 bg-clip-text text-transparent">
+              {isEditing ? 'Edit Rental Listing' : 'List Your Property for Rent'}
             </h1>
-            <p className="text-gray-600 mt-2">Provide the details below to find the perfect tenant.</p>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">Provide the details below to find the perfect tenant.</p>
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="bg-blue-100 shadow-lg m-4 rounded-lg p-4">
-              <div className="text-2xl text-gray-700 font-bold flex items-center gap-2">
+            
+            {/* Property Details Section */}
+            <div className={`bg-blue-100 dark:bg-gray-700 ${sectionBgClass}`}>
+              <div className={sectionTitleClass}>
                 <i className="ri-home-heart-line"></i>
                 <p>Property Details</p>
               </div>
-              <hr className="my-3 border-blue-200" />
+              <hr className="my-3 border-blue-200 dark:border-gray-600" />
 
               <div className="flex flex-col md:flex-row w-full gap-4">
                 <div className="w-full flex flex-col">
-                  <label htmlFor="propertyTitle" className="font-semibold text-gray-600 mb-1">
+                  <label htmlFor="title" className={labelClass}>
                     Property Title
                   </label>
                   <input
                     type="text"
-                    id="propertyTitle"
+                    id="title"
                     placeholder="e.g., Modern 2BHK Apartment"
-                    className="p-2 border-2 rounded h-12"
+                    className={inputClass}
                     value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    onChange={handleChange}
                     required
                   />
                 </div>
                 <div className="flex flex-col w-full">
-                  <label htmlFor="propertyType" className="font-semibold text-gray-600 mb-1">
+                  <label htmlFor="type" className={labelClass}>
                     Property Type
                   </label>
                   <select
-                    id="propertyType"
-                    className="border-2 h-12 rounded p-2"
+                    id="type"
+                    className={inputClass}
                     value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    onChange={handleChange}
                     required
                   >
                     <option>Apartment / Flat</option>
@@ -173,14 +239,14 @@ function Rent() {
                 </div>
               </div>
 
-              {/* --- (NEW) State Dropdown --- */}
+              {/* State Dropdown */}
               <div className="flex flex-col mt-4">
-                <label htmlFor="state" className="font-semibold text-gray-600 mb-1">State</label>
+                <label htmlFor="state" className={labelClass}>State</label>
                 <select
                   id="state"
-                  className="border-2 h-12 rounded p-2"
+                  className={inputClass}
                   value={formData.state}
-                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                  onChange={handleChange}
                   required
                 >
                   <option value="punjab">Punjab</option>
@@ -188,41 +254,43 @@ function Rent() {
                   <option value="gujarat">Gujarat</option>
                   <option value="haryana">Haryana</option>
                   <option value="delhi">Delhi</option>
+                  <option value="maharashtra">Maharashtra</option>
                   {/* Add others */}
                 </select>
               </div>
 
               <div className="flex flex-col mt-4">
-                <label htmlFor="propertyAddress" className="font-semibold text-gray-600 mb-1">
+                <label htmlFor="address" className={labelClass}>
                   Full Address
                 </label>
                 <textarea
-                  id="propertyAddress"
+                  id="address"
                   rows="3"
-                  className="border-2 p-2 rounded"
+                  className={textareaClass}
                   placeholder="Enter full address including city and pin code"
                   value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  onChange={handleChange}
                   required
                 />
               </div>
             </div>
 
-            <div className="bg-green-100 shadow-lg m-4 rounded-lg p-4">
-              <div className="text-2xl text-gray-700 font-bold flex items-center gap-2">
+            {/* Rental & Configuration Section */}
+            <div className={`bg-green-100 dark:bg-gray-700 ${sectionBgClass}`}>
+              <div className={sectionTitleClass}>
                 <i className="ri-price-tag-3-line"></i>
                 <p>Rental & Configuration</p>
               </div>
-              <hr className="my-3 border-green-200" />
+              <hr className="my-3 border-green-200 dark:border-gray-600" />
 
               <div className="flex flex-col md:flex-row w-full gap-4">
                 <div className="flex flex-col w-full">
-                  <label htmlFor="bhkType" className="font-semibold text-gray-600 mb-1">BHK Type</label>
+                  <label htmlFor="bhk" className={labelClass}>BHK Type</label>
                   <select
-                    id="bhkType"
-                    className="border-2 rounded h-12 p-2"
+                    id="bhk"
+                    className={inputClass}
                     value={formData.bhk}
-                    onChange={(e) => setFormData({ ...formData, bhk: e.target.value })}
+                    onChange={handleChange}
                     required
                   >
                     <option>1 BHK</option>
@@ -232,14 +300,14 @@ function Rent() {
                   </select>
                 </div>
                 <div className="flex flex-col w-full">
-                  <label htmlFor="furnishingStatus" className="font-semibold text-gray-600 mb-1">
+                  <label htmlFor="furnishing" className={labelClass}>
                     Furnishing
                   </label>
                   <select
-                    id="furnishingStatus"
-                    className="border-2 rounded h-12 p-2"
+                    id="furnishing"
+                    className={inputClass}
                     value={formData.furnishing}
-                    onChange={(e) => setFormData({ ...formData, furnishing: e.target.value })}
+                    onChange={handleChange}
                     required
                   >
                     <option>Semi-Furnished</option>
@@ -250,110 +318,70 @@ function Rent() {
               </div>
               <div className="flex flex-col md:flex-row gap-4 mt-4">
                 <div className="flex flex-col w-full">
-                  <label htmlFor="monthlyRent" className="font-semibold text-gray-600 mb-1">
+                  <label htmlFor="rent" className={labelClass}>
                     Monthly Rent (₹)
                   </label>
                   <input
                     type="text"
-                    id="monthlyRent"
-                    className="border-2 rounded h-12 p-2"
+                    id="rent"
+                    className={inputClass}
                     value={formData.rent}
-                    onChange={(e) => setFormData({ ...formData, rent: e.target.value })}
+                    onChange={handleChange}
                     required
                   />
                 </div>
                 <div className="flex flex-col w-full">
-                  <label htmlFor="securityDeposit" className="font-semibold text-gray-600 mb-1">
+                  <label htmlFor="deposit" className={labelClass}>
                     Security Deposit (₹)
                   </label>
                   <input
                     type="text"
-                    id="securityDeposit"
-                    className="border-2 rounded h-12 p-2"
+                    id="deposit"
+                    className={inputClass}
                     value={formData.deposit}
-                    onChange={(e) => setFormData({ ...formData, deposit: e.target.value })}
+                    onChange={handleChange}
                     required
                   />
                 </div>
               </div>
             </div>
 
-            <div className="bg-yellow-100 shadow-lg m-4 rounded-lg p-4">
-              <div className="text-2xl text-gray-700 font-bold flex items-center gap-2">
+            {/* Amenities Section */}
+            <div className={`bg-yellow-100 dark:bg-gray-700 ${sectionBgClass}`}>
+              <div className={sectionTitleClass}>
                 <i className="ri-service-line"></i>
                 <p>Amenities</p>
               </div>
-              <hr className="my-3 border-yellow-200" />
+              <hr className="my-3 border-yellow-200 dark:border-gray-600" />
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="amenityParkingRent"
-                    checked={formData.amenities.parking}
-                    onChange={() => handleAmenityChange('parking')}
-                  />
-                  Parking
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="amenityACRent"
-                    checked={formData.amenities.ac}
-                    onChange={() => handleAmenityChange('ac')}
-                  />
-                  Air Conditioning
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="amenityBackupRent"
-                    checked={formData.amenities.backup}
-                    onChange={() => handleAmenityChange('backup')}
-                  />
-                  Power Backup
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="amenityKitchenRent"
-                    checked={formData.amenities.kitchen}
-                    onChange={() => handleAmenityChange('kitchen')}
-                  />
-                  Modular Kitchen
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="amenitySecurityRent"
-                    checked={formData.amenities.security}
-                    onChange={() => handleAmenityChange('security')}
-                  />
-                  Gated Security
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="amenityBalconyRent"
-                    checked={formData.amenities.balcony}
-                    onChange={() => handleAmenityChange('balcony')}
-                  />
-                  Balcony
-                </label>
+                {Object.keys(formData.amenities).map((amenityKey) => (
+                  <label key={amenityKey} className="flex items-center gap-2 capitalize text-gray-700 dark:text-gray-300">
+                    <input
+                      type="checkbox"
+                      id={`amenity${amenityKey}Rent`}
+                      checked={formData.amenities[amenityKey]}
+                      onChange={() => handleAmenityChange(amenityKey)}
+                      className="form-checkbox h-4 w-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500"
+                    />
+                    {amenityKey.replace(/([A-Z])/g, ' $1').trim()}
+                  </label>
+                ))}
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100 m-4 p-4">
-              <div className="text-2xl text-gray-700 font-bold flex items-center gap-2">
+            {/* Photo Upload Section & Submit */}
+            <div className={`bg-purple-50 dark:bg-gray-700 rounded-2xl border border-purple-100 dark:border-gray-600 m-4 p-4`}>
+              <div className={sectionTitleClass}>
                 <i className="ri-image-add-line"></i>
                 <p>Upload Photos</p>
               </div>
-              <hr className="my-3 border-purple-200" />
+              <hr className="my-3 border-purple-200 dark:border-gray-600" />
               <div className="mt-4">
                 <input
                   type="file"
                   id="propertyPhotos"
                   name="propertyPhotos"
-                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+                  className="block w-full text-sm text-gray-500 dark:text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100 dark:file:bg-violet-600 dark:file:text-white dark:hover:file:bg-violet-700"
                   multiple
                 />
               </div>
@@ -362,7 +390,7 @@ function Rent() {
             <div className="w-full flex justify-center p-6">
               <button
                 type="submit"
-                className="w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-8 py-3 text-white font-semibold shadow-lg hover:shadow-xl"
+                className="w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-8 py-3 text-white font-semibold shadow-lg hover:shadow-xl active:scale-[.99] focus:outline-none focus:ring-4 focus:ring-emerald-400/40 transition"
               >
                 {isEditing ? 'Update Property' : 'Submit Property'}
                 <span className="text-white/90">→</span>

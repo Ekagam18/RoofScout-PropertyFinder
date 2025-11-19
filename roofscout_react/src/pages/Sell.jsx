@@ -1,5 +1,7 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { Sun, Moon, Menu } from 'lucide-react'; 
 
 function Sell() {
   const [searchParams] = useSearchParams();
@@ -19,6 +21,18 @@ function Sell() {
     description: ''
   });
 
+  // 1. --- DARK MODE STATE AND LOGIC ---
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('rs-theme') || 'light'; }
+    catch { return 'light'; }
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    theme === 'dark' ? root.classList.add('dark') : root.classList.remove('dark');
+    try { localStorage.setItem('rs-theme', theme); } catch {}
+  }, [theme]);
+  
   useEffect(() => {
     if (editId) {
       const userProperties = JSON.parse(localStorage.getItem('userProperties')) || [];
@@ -41,6 +55,10 @@ function Sell() {
     }
   }, [editId]);
 
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.id]: e.target.value });
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const { title, type, state, address, price, bedrooms, bathrooms, size, description } = formData;
@@ -54,6 +72,10 @@ function Sell() {
     }
 
     let existingProperties = JSON.parse(localStorage.getItem('userProperties')) || [];
+
+    const detailsString = type === 'plot' 
+      ? `${size} sqft Plot` 
+      : `${bedrooms || 'X'} Bed, ${bathrooms || 'Y'} Bath, ${size} sqft`;
 
     if (isEditing) {
       const propertyIndex = existingProperties.findIndex(prop => prop.id === Number(editId));
@@ -69,7 +91,7 @@ function Sell() {
           bathrooms,
           size,
           description,
-          details: `${bedrooms} Bed, ${bathrooms} Bath, ${size} sqft`,
+          details: detailsString,
           photoCount: photos.length > 0 ? photos.length : existingProperties[propertyIndex].photoCount
         };
         alert('Property Updated Successfully!');
@@ -90,7 +112,7 @@ function Sell() {
         bathrooms,
         size,
         description,
-        details: `${bedrooms} Bed, ${bathrooms} Bath, ${size} sqft`,
+        details: detailsString,
         photoCount: photos.length,
         owner: currentOwner,
         status: 'Active'
@@ -102,52 +124,99 @@ function Sell() {
     localStorage.setItem('userProperties', JSON.stringify(existingProperties));
     navigate('/userdashboard');
   };
-
+  
+  const inputClass = "border-2 rounded h-12 p-2 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors";
+  const textareaClass = "border-2 rounded p-2 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors";
+  const labelClass = "text-gray-700 dark:text-gray-300 font-semibold";
+  const sectionBgClass = "shadow-inner m-4 rounded-lg";
+  
   return (
-    <div className="bg-gradient-to-br from-blue-100 via-green-100 to-pink-200 min-h-screen">
+    <div className={`transition-colors duration-300 ${
+        theme === 'dark' ? 'bg-gray-900 text-gray-100' : 'bg-gradient-to-br from-blue-50 via-green-50 to-pink-50 min-h-screen'
+    }`}>
+      
+      {/* --- NEW NAVBAR --- */}
+      <div className={`backdrop-blur-md ${
+        theme === 'dark' ? 'bg-gray-800/70' : 'bg-white/60'
+      } sticky top-0 z-50 flex justify-between items-center h-20 px-6 shadow-sm`}>
+
+        <div className="flex items-center gap-4">
+          <Link to="/userdashboard" className="p-2 rounded hover:bg-gray-200/20 dark:hover:bg-gray-700/20">
+            <Menu size={20} />
+          </Link>
+
+          <div className="flex items-center gap-3">
+            <img src="/logoRS.jpg" className="h-12 w-12 rounded-full" alt="RoofScout" />
+            <div>
+              <h1 className="text-xl font-bold tracking-tight">
+                <Link to="/">
+                  <span className="text-yellow-400">Roof</span>
+                  <span className="text-blue-500">Scout</span>
+                </Link>
+              </h1>
+              <p className="text-sm opacity-70">Sell Property</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          
+          {/* DARK MODE BUTTON */}
+          <button 
+            onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} 
+            className="px-3 py-2 border rounded hover:shadow bg-gray-100 dark:bg-gray-700 dark:border-gray-600 transition-colors duration-200"
+          >
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+        </div>
+      </div>
+      
+      {/* --- MAIN FORM CONTENT --- */}
       <div className="flex items-start justify-center py-10">
-        <div className="max-w-4xl w-full bg-white rounded-lg shadow-2xl mx-4">
-          <div className="px-6 py-6">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center bg-gradient-to-r from-blue-700 via-indigo-600 to-fuchsia-600 bg-clip-text text-transparent">
-              List Your Property On RoofScout
+        <div className="max-w-4xl w-full bg-white dark:bg-gray-800 rounded-3xl shadow-2xl mx-4">
+          <div className="p-8 border-b border-gray-100 dark:border-gray-700">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-center bg-gradient-to-r from-blue-600 via-indigo-500 to-fuchsia-500 bg-clip-text text-transparent">
+              {isEditing ? 'Edit Property Listing' : 'List Your Property On RoofScout'}
             </h1>
-            <p className="text-center text-gray-600 mt-2">
+            <p className="text-center text-gray-600 dark:text-gray-400 mt-2">
               Fill out the details below to put your property on the market.
             </p>
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="bg-blue-100 shadow-inner m-4 rounded-lg">
-              <div className="flex items-center gap-2 text-2xl mt-4 p-4 text-gray-700 font-bold">
+            
+            {/* Basic Information Section */}
+            <div className={`bg-blue-50 dark:bg-gray-700 ${sectionBgClass}`}>
+              <div className="flex items-center gap-2 text-2xl mt-4 p-4 text-gray-700 dark:text-gray-300 font-bold">
                 <i className="ri-home-4-line"></i>
                 <p>Basic Information</p>
               </div>
 
               <div className="md:flex md:space-x-4">
                 <div className="flex flex-col w-full p-4">
-                  <label htmlFor="property-title" className="text-gray-700 font-semibold">
+                  <label htmlFor="title" className={labelClass}>
                     Property Title
                   </label>
                   <input
-                    id="property-title"
+                    id="title"
                     type="text"
                     placeholder="eg. Modern 2BHK Apartment"
-                    className="border-2 rounded h-12 p-2 w-full"
+                    className={inputClass}
                     value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    onChange={handleChange}
                     required
                   />
                 </div>
 
                 <div className="flex flex-col w-full p-4">
-                  <label htmlFor="listing-type" className="text-gray-700 font-semibold">
+                  <label htmlFor="type" className={labelClass}>
                     Property Type
                   </label>
                   <select
-                    id="listing-type"
-                    className="border-2 rounded h-12 p-2 w-full"
+                    id="type"
+                    className={inputClass}
                     value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    onChange={handleChange}
                     required
                   >
                     <option value="plot">Plot / Land</option>
@@ -158,14 +227,14 @@ function Sell() {
                 </div>
               </div>
 
-              {/* --- State Dropdown --- */}
+              {/* State Dropdown */}
               <div className="p-4">
-                <label htmlFor="state" className="text-gray-700 font-semibold">State</label>
+                <label htmlFor="state" className={labelClass}>State</label>
                 <select
                   id="state"
-                  className="border-2 rounded h-12 p-2 w-full"
+                  className={inputClass}
                   value={formData.state}
-                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                  onChange={handleChange}
                   required
                 >
                   <option value="punjab">Punjab</option>
@@ -177,95 +246,97 @@ function Sell() {
                 </select>
               </div>
 
-              <div className="p-4">
-                <label htmlFor="address" className="text-gray-700 font-semibold">Full Address</label>
+              <div className="p-4 pb-6">
+                <label htmlFor="address" className={labelClass}>Full Address</label>
                 <textarea
                   id="address"
                   placeholder="Enter the full property address"
                   rows="3"
-                  className="border-2 rounded p-2 w-full"
+                  className={textareaClass}
                   value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  onChange={handleChange}
                   required
                 />
               </div>
             </div>
 
-            <hr className="my-6 mx-6" />
+            <hr className="my-6 mx-6 border-gray-200 dark:border-gray-600" />
 
-            <div className="bg-yellow-100 shadow-lg m-4 rounded-lg">
-              <div className="flex gap-2 text-2xl mt-4 p-4 text-gray-700 font-bold">
+            {/* Details & Price Section */}
+            <div className={`bg-yellow-50 dark:bg-gray-700 ${sectionBgClass}`}>
+              <div className="flex gap-2 text-2xl mt-4 p-4 text-gray-700 dark:text-gray-300 font-bold">
                 <i className="ri-price-tag-3-line"></i>
                 <p>Details & Price</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-4 pb-4">
                 <div className="flex flex-col">
-                  <label htmlFor="price" className="text-gray-700 font-semibold">Price (in ₹)</label>
+                  <label htmlFor="price" className={labelClass}>Price (in ₹)</label>
                   <input
                     id="price"
                     type="text"
-                    className="border-2 rounded h-12 p-2 w-full"
+                    className={inputClass}
                     value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    onChange={handleChange}
                     required
                   />
                 </div>
 
                 <div className="flex flex-col">
-                  <label htmlFor="bedrooms" className="text-gray-700 font-semibold">Bedrooms</label>
+                  <label htmlFor="bedrooms" className={labelClass}>Bedrooms</label>
                   <input
                     id="bedrooms"
                     type="text"
-                    className="border-2 rounded h-12 p-2 w-full"
+                    className={inputClass}
                     value={formData.bedrooms}
-                    onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
+                    onChange={handleChange}
                   />
                 </div>
 
                 <div className="flex flex-col">
-                  <label htmlFor="bathrooms" className="text-gray-700 font-semibold">Bathrooms</label>
+                  <label htmlFor="bathrooms" className={labelClass}>Bathrooms</label>
                   <input
                     id="bathrooms"
                     type="text"
-                    className="border-2 rounded h-12 p-2 w-full"
+                    className={inputClass}
                     value={formData.bathrooms}
-                    onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
+                    onChange={handleChange}
                   />
                 </div>
               </div>
 
               <div className="p-4">
-                <label htmlFor="size" className="text-gray-700 font-semibold">
+                <label htmlFor="size" className={labelClass}>
                   Total Size (in sq. ft.)
                 </label>
                 <input
                   id="size"
                   type="text"
-                  className="border-2 rounded h-12 p-2 w-full"
+                  className={inputClass}
                   value={formData.size}
-                  onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                  onChange={handleChange}
                   required
                 />
               </div>
 
               <div className="p-4 pb-6">
-                <label htmlFor="description" className="text-gray-700 font-semibold">Description</label>
+                <label htmlFor="description" className={labelClass}>Description</label>
                 <textarea
                   id="description"
                   placeholder="Tell us more about your property..."
                   rows="3"
-                  className="border-2 rounded p-2 w-full"
+                  className={textareaClass}
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={handleChange}
                 />
               </div>
             </div>
 
-            <hr className="my-6 mx-6" />
+            <hr className="my-6 mx-6 border-gray-200 dark:border-gray-600" />
 
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 m-4 rounded-lg shadow-sm p-4">
-              <div className="flex gap-2 items-center text-2xl text-gray-700 font-bold mb-4">
+            {/* Photo Upload & Submit Section */}
+            <div className={`bg-purple-50 dark:bg-gray-700 m-4 rounded-lg shadow-sm p-4`}>
+              <div className="flex gap-2 items-center text-2xl text-gray-700 dark:text-gray-300 font-bold mb-4">
                 <i className="ri-multi-image-line"></i>
                 <p>Upload Photos</p>
               </div>
@@ -277,7 +348,7 @@ function Sell() {
                   type="file"
                   multiple
                   accept="image/*"
-                  className="w-full md:w-auto"
+                  className="w-full md:w-auto text-gray-700 dark:text-gray-300"
                 />
               </div>
 
