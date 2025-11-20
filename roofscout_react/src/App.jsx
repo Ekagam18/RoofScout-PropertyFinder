@@ -18,6 +18,7 @@ import Sell from './pages/Sell';
 import Rent from './pages/Rent';
 import PG from './pages/PG';
 import UserProfile from './pages/UserProfile';
+import Payment from './pages/Payment';
 
 import { PropertyProvider } from './contexts/PropertyContext';         // BUY Provider
 import { RentProvider } from './contexts/PropertyContextRent';          // RENT Provider
@@ -38,6 +39,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/userdashboard" element={<UserDashboard />} />
             <Route path="/user-profile" element={<UserProfile />} />
+            <Route path="/payment/:id" element={<Payment />} />
 
             {/* ADMIN */}
             <Route path="/AdminDashboard" element={<AdminDashboard />} />

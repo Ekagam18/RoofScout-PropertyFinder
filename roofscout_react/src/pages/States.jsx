@@ -19,11 +19,39 @@ function States() {
   const [page, setPage] = useState(1);
   const perPage = 6;
 
-  // FETCH SUPABASE PROPERTIES
+  // FETCH PROPERTIES (prioritize localStorage since Supabase not available)
   useEffect(() => {
     async function fetchProps() {
-      const { data, error } = await supabase.from("properties").select("*");
-      if (error) return console.log(error);
+      let data = [];
+      
+      // First try localStorage (primary data source now)
+      try {
+        const localData = JSON.parse(localStorage.getItem("allProperties") || "[]");
+        console.log("States.jsx: Loaded from localStorage:", localData.length, "properties");
+        data = localData;
+      } catch (err) {
+        console.log("Error loading from localStorage:", err);
+        data = [];
+      }
+      
+      // If localStorage is empty, try Supabase as backup
+      if (data.length === 0) {
+        try {
+          const { data: supabaseData, error: supabaseError } = await supabase.from("properties").select("*");
+          if (!supabaseError && supabaseData) {
+            data = supabaseData;
+            console.log("States.jsx: Loaded from Supabase:", data.length, "properties");
+          }
+        } catch (err) {
+          console.log("Supabase also not available:", err);
+        }
+      }
+      
+      if (data.length === 0) {
+        console.log("No properties found in localStorage or Supabase");
+        setSupabaseProps([]);
+        return;
+      }
 
      const formatted = data.map((p) => {
   let district = "";
@@ -72,15 +100,24 @@ function States() {
   // COMBINE & FILTER
   useEffect(() => {
     const selectedState = (searchParams.get("state") || "punjab").toLowerCase();
+    console.log("States.jsx: Filtering for state:", selectedState);
 
     const all = [...apiProperties, ...supabaseProps];
+    console.log("States.jsx: Total properties to filter:", all.length);
 
     const match = all.filter(
-      (p) =>
-        (p.state || "").includes(selectedState) &&
-        !hiddenIds.includes(p.id)
+      (p) => {
+        const stateMatch = (p.state || "").toLowerCase().includes(selectedState) || 
+                          (p.location || "").toLowerCase().includes(selectedState);
+        const notHidden = !hiddenIds.includes(p.id);
+        
+        console.log(`Property "${p.title}": state="${p.state}", location="${p.location}", matches="${stateMatch}", notHidden="${notHidden}"`);
+        
+        return stateMatch && notHidden;
+      }
     );
 
+    console.log("States.jsx: Filtered properties:", match.length);
     setFilteredProperties(match);
     setPage(1);
   }, [apiProperties, supabaseProps, searchParams]);
@@ -103,9 +140,22 @@ function States() {
       <Navbar />
 
       <div className="container mx-auto px-4 mt-6 dark:text-white">
-        <h1 className="text-3xl font-bold mb-6">
-          Properties in {searchParams.get("state")?.toUpperCase()}
-        </h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">
+            Properties in {searchParams.get("state")?.toUpperCase()}
+          </h1>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2"
+          >
+            <i className="ri-refresh-line"></i>
+            Refresh
+          </button>
+        </div>
+        
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
+          Showing {filteredProperties.length} properties
+        </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
           {paginated.map((p) => (

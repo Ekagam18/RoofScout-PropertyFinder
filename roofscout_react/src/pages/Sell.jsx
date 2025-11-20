@@ -88,26 +88,43 @@ function Sell() {
         : `${bedrooms || "X"} Bed, ${bathrooms || "Y"} Bath, ${size} sqft`;
 
     // 3️⃣ → Insert into Supabase
-  const { error } = await supabase.from("properties").insert([
-  {
-    owner_id: userId,
-    title,
-    type: "sell",              // keep all lowercase for filtering
-    price,
-    location: `${address}, ${state}`, 
-    area: size,
-    image: null,               // update later when file upload is done
+  // Save directly to localStorage (Supabase not accessible)
+  let error = null;
 
-    // 🔥 NEW IMPORTANT FIELDS
-    beds: bedrooms || null,
-    baths: bathrooms || null,
-    garages: garages || null,             // or add a garages input if needed
-  },
-]);
+  // Also save to localStorage as backup
+  try {
+    const propertyData = {
+      id: `SELL-${Date.now()}`,
+      owner_id: userId,
+      title,
+      type: type.toLowerCase(),
+      price,
+      location: `${address}, ${state}`,
+      area: size,
+      image: null,
+      description,
+      details: detailsString,
+      beds: bedrooms || null,
+      baths: bathrooms || null,
+      created_at: new Date().toISOString(),
+    };
+    
+    // Use 'allProperties' key so AllProperties page can see them
+    const existingProperties = JSON.parse(localStorage.getItem("allProperties") || "[]");
+    
+    // Add formatted price text
+    propertyData.priceText = propertyData.price ? `₹${Number(propertyData.price).toLocaleString()}` : "Price on request";
+    
+    existingProperties.push(propertyData);
+    localStorage.setItem("allProperties", JSON.stringify(existingProperties));
+    console.log("✅ Property saved to localStorage!", propertyData);
+  } catch (localError) {
+    console.log("localStorage Error:", localError);
+  }
 
 
     if (error) {
-      console.log("Supabase Insert Error:", error);
+      console.log("Error:", error);
       alert("Error saving property.");
       return;
     }

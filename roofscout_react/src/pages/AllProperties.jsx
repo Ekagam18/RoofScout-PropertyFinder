@@ -2,28 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-
-// All Properties
-const PROPERTIES = [
-  { id: 'A001', title: 'Sector 14 , Chandigarh', priceText: '₹15-32 Lacs', price: 15, area: 900, type: 'house', image: '/house1.jpg' },
-  { id: 'A002', title: '405 Lock House , Sector 12 , Chandigarh', priceText: '₹1-7 Cr', price: 100, area: 3000, type: 'house', image: '/house2ch.jpg' },
-  { id: 'A003', title: '324 Tara Place, Sector 16 , Chandigarh', priceText: '₹50-84 Lacs', price: 60, area: 1200, type: 'house', image: '/house3ch.png' },
-  { id: 'A004', title: '44 Timber Road, Chandigarh', priceText: '₹15-35 Cr', price: 1500, area: 6000, type: 'house', image: '/house4ch.jpg' },
-  { id: 'A005', title: 'Sector 26, Chandigarh', priceText: '₹5-19 Cr', price: 500, area: 3500, type: 'house', image: '/house5ch.jpg' },
-  { id: 'A006', title: 'PGI road , Sector 16 , Chandigarh', priceText: '₹16-27 Lacs', price: 170, area: 1100, type: 'house', image: '/house6ch.jpg' },
-  { id: 'A007', title: 'Mansa , Punjab', priceText: '₹5 Cr', price: 500, area: 4200, type: 'house', image: '/house1pb.jpg' },
-  { id: 'A008', title: '405 Dera Bassi, Punjab', priceText: '₹5 Cr', price: 500, area: 3500, type: 'house', image: '/house2pb.jpg' },
-  { id: 'A009', title: '324 Tara Place, Pune', priceText: '₹5 Cr', price: 500, area: 1200, type: 'house', image: '/house3pb.jpg' },
-  { id: 'A010', title: '324 Tara Place, Pune', priceText: '₹5 Cr', price: 500, area: 1800, type: 'house', image: '/house4pb.jpg' },
-  { id: 'A011', title: '324 Tara Place, Pune', priceText: '₹5 Cr', price: 500, area: 4200, type: 'house', image: '/house5pb.jpg' },
-  { id: 'A012', title: '324 Tara Place, Pune', priceText: '₹5 Cr', price: 500, area: 5000, type: 'house', image: '/house6pb.jpg' },
-  { id: '5060', title: 'Mansa , Punjab', priceText: '₹5 Cr', price: 500, area: 5000, type: 'plot', image: 'https://th.bing.com/th/id/OIP.rtBKbxWD-cO_JbfK9Rl8KgHaFj?w=222&h=180' },
-  { id: '5061', title: '405 Dera Bassi, Punjab', priceText: '₹5 Cr', price: 500, area: 5000, type: 'plot', image: 'https://th.bing.com/th/id/OIP.fjA63g4LynWtnfeCIwuO0wHaEK?w=265&h=180' },
-  { id: '5062', title: '324 Tara Place, Punjab', priceText: '₹5 Cr', price: 500, area: 5000, type: 'plot', image: 'https://th.bing.com/th/id/OIP.8XehqTzGtglzlbPglw_jxQHaEJ?w=328&h=184' },
-  { id: '5063', title: '324 Tara Place, Punjab', priceText: '₹5 Cr', price: 500, area: 5000, type: 'plot', image: 'https://th.bing.com/th/id/OIP.t5si8dD57J5rZX4fWK5jagAAAA?w=224&h=180' },
-  { id: '5064', title: '324 Tara Place, Punjab', priceText: '₹4 Cr', price: 400, area: 5000, type: 'plot', image: 'https://th.bing.com/th/id/OIP.S-nsr8yVkJzy9AFgomOHYwAAAA?w=230&h=180' },
-  { id: '5065', title: '324 Tara Place, Punjab', priceText: '₹2 Cr', price: 200, area: 5000, type: 'plot', image: 'https://th.bing.com/th/id/OIP.5k9mVM1IqxncdzJL8fA5jgHaFj?w=254&h=191' },
-];
+// Note: Supabase temporarily disabled, using localStorage
 
 function AllProperties() {
   const navigate = useNavigate();
@@ -34,25 +13,101 @@ function AllProperties() {
   });
 
   const [sortType, setSortType] = useState("none");
-  const [filteredProperties, setFilteredProperties] = useState(PROPERTIES);
+  const [allProperties, setAllProperties] = useState([]);
+  const [filteredProperties, setFilteredProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Pagination
   const [page, setPage] = useState(1);
   const perPage = 6;
 
+  // Fetch properties from localStorage (since Supabase is not accessible)
+  const fetchProperties = () => {
+    try {
+      // Get properties from localStorage
+      const localProperties = JSON.parse(localStorage.getItem("allProperties") || "[]");
+      
+      console.log("Loaded properties from localStorage:", localProperties);
+
+      // If no properties exist, add some sample data
+      if (localProperties.length === 0) {
+        const sampleProperties = [
+          {
+            id: 'SAMPLE-1',
+            title: 'Sample Villa in Punjab',
+            type: 'villa',
+            price: 5000000,
+            priceText: '₹50,00,000',
+            location: 'Mohali, Punjab',
+            area: 2500,
+            image: '/default.jpg',
+            beds: '4',
+            baths: '3',
+            description: 'Beautiful sample villa',
+            owner: 'Owner'
+          },
+          {
+            id: 'SAMPLE-2',
+            title: 'Sample Plot in Chandigarh',
+            type: 'plot',
+            price: 2000000,
+            priceText: '₹20,00,000',
+            location: 'Sector 17, Chandigarh',
+            area: 1000,
+            image: '/default.jpg',
+            beds: '',
+            baths: '',
+            description: 'Prime location plot',
+            owner: 'Owner'
+          }
+        ];
+        localStorage.setItem("allProperties", JSON.stringify(sampleProperties));
+        setAllProperties(sampleProperties);
+        setFilteredProperties(sampleProperties);
+      } else {
+        // Ensure consistent format
+        const formattedProperties = localProperties.map((prop) => ({
+          id: prop.id,
+          title: prop.title || "Untitled Property",
+          priceText: prop.priceText || (prop.price ? `₹${Number(prop.price).toLocaleString()}` : "Price on request"),
+          price: Number(prop.price) || 0,
+          area: Number(prop.area) || 0,
+          type: prop.type || "house",
+          image: prop.image || "/default.jpg",
+          location: prop.location || "",
+          beds: prop.beds || "",
+          baths: prop.baths || "",
+          description: prop.description || "",
+          owner: prop.owner || "Owner"
+        }));
+
+        setAllProperties(formattedProperties);
+        setFilteredProperties(formattedProperties);
+      }
+    } catch (err) {
+      console.error("Error loading from localStorage:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProperties();
+  }, []);
+
   // Apply Filters
   const applyFilters = () => {
-    let filtered = PROPERTIES.filter((prop) => {
+    let filtered = allProperties.filter((prop) => {
       let matchType = filters.type === "all" || prop.type === filters.type;
       let matchPrice = true;
 
       const p = prop.price;
 
       switch (filters.price) {
-        case "1": matchPrice = p < 50; break;
-        case "2": matchPrice = p >= 50 && p < 200; break;
-        case "3": matchPrice = p >= 200 && p < 500; break;
-        case "4": matchPrice = p >= 500; break;
+        case "1": matchPrice = p < 5000000; break;        // Below ₹50 Lacs
+        case "2": matchPrice = p >= 5000000 && p < 20000000; break;  // ₹50L - ₹2Cr
+        case "3": matchPrice = p >= 20000000 && p < 50000000; break; // ₹2Cr - ₹5Cr
+        case "4": matchPrice = p >= 50000000; break;      // Above ₹5 Cr
         default: matchPrice = true;
       }
 
@@ -66,7 +121,7 @@ function AllProperties() {
   const clearFilters = () => {
     setFilters({ type: "all", price: "all" });
     setSortType("none");
-    setFilteredProperties(PROPERTIES);
+    setFilteredProperties(allProperties);
     setPage(1);
   };
 
@@ -89,7 +144,37 @@ function AllProperties() {
       <Navbar />
 
       <div className="container mx-auto px-4 mt-6 dark:text-white">
-        <h1 className="text-3xl font-bold mb-6">All Properties</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">All Properties</h1>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setLoading(true);
+                fetchProperties();
+              }}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            >
+              🔄 Refresh
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem("allProperties");
+                setAllProperties([]);
+                setFilteredProperties([]);
+                alert("All properties cleared! Refresh to reload sample data.");
+              }}
+              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+            >
+              🗑️ Clear All
+            </button>
+          </div>
+        </div>
+
+        {loading && (
+          <div className="text-center py-10">
+            <p className="text-xl">Loading properties...</p>
+          </div>
+        )}
 
         {/* FILTER SECTION */}
         <div className="bg-gray-100 dark:bg-gray-800 p-5 rounded-lg mb-8 shadow">
@@ -104,8 +189,10 @@ function AllProperties() {
                 className="w-full border p-2 rounded dark:bg-gray-700 dark:text-white"
               >
                 <option value="all">All</option>
-                <option value="house">House</option>
-                <option value="plot">Plot</option>
+                <option value="plot">Plot / Land</option>
+                <option value="flat">Flat / Apartment</option>
+                <option value="builder-floor">Builder Floor</option>
+                <option value="villa">Villa / House</option>
               </select>
             </div>
 

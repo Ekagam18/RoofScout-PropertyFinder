@@ -387,6 +387,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { supabase } from '../supabase';
 
 // PROPERTY MAP (STATIC FALLBACK)
 const DATA = {
@@ -456,10 +457,19 @@ const getStoredJSON = (key, defaultVal = []) => {
 };
 
 function ViewDetail() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
-  // PROPERTY DATA
+  // Helper function for localStorage
+  const getStoredJSON = (key, defaultVal = []) => {
+    try {
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : defaultVal;
+    } catch (error) {
+      console.error(`Error parsing JSON from localStorage key "${key}":`, error);
+      return defaultVal;
+    }
+  };  // PROPERTY DATA
   const [propertyData, setPropertyData] = useState({
     title: '',
     priceText: '',
@@ -474,13 +484,14 @@ function ViewDetail() {
     image: '',
     houseId: '',
     owner: 'Unknown'
-  });
+  });
 
-  // FIXED EMAIL LOGIC 
-  const FIXED_EMAIL = "owner@example.com";
-  const [emailVisible, setEmailVisible] = useState(false);
+  // USER AUTHENTICATION STATE
+  const [loggedUser, setLoggedUser] = useState('');
 
-  // FORM DATA
+  // FIXED EMAIL LOGIC 
+  const FIXED_EMAIL = "owner@example.com";
+  const [emailVisible, setEmailVisible] = useState(false);  // FORM DATA
   const [formData, setFormData] = useState({
     userType: '',
     reasonToBuy: '',
@@ -572,10 +583,55 @@ function ViewDetail() {
       localities: loc,
       address: owned[0]?.address || propertyData.address
     });
-  }, [propertyData.owner]);
+  }, [propertyData.owner]);
 
-  // TOUR LOGIC - Handlers updated to reflect date/time logic
-  const handleTourClick = () => {
+  // USER AUTHENTICATION - Load logged in user
+  useEffect(() => {
+    async function loadUser() {
+      let fetchedUsername = '';
+
+      try {
+        // Try Supabase auth first
+        const { data: sessionData } = await supabase.auth.getSession();
+        const session = sessionData.session;
+        
+        if (session?.user) {
+          // Try to get username from Supabase
+          try {
+            const { data: usernameData } = await supabase
+              .from("username")
+              .select("username")
+              .eq("id", session.user.id)
+              .single();
+            fetchedUsername = usernameData?.username || session.user.email || "User";
+          } catch (err) {
+            console.log("Could not fetch username from Supabase:", err);
+            fetchedUsername = session.user.email || "User";
+          }
+        }
+      } catch (authErr) {
+        console.log("Supabase auth not available, using localStorage:", authErr);
+      }
+
+      // If no Supabase session, use localStorage fallback
+      if (!fetchedUsername) {
+        const localProfile = getStoredJSON("userProfile");
+        if (localProfile?.name) {
+          fetchedUsername = localProfile.name;
+        } else {
+          fetchedUsername = "Guest User";
+        }
+      }
+
+      setLoggedUser(fetchedUsername);
+      console.log("ViewDetail loaded user:", fetchedUsername);
+    }
+
+    loadUser();
+  }, []);
+
+  // TOUR LOGIC - Handlers updated to reflect date/time logic
+  const handleTourClick = () => {
     if (!formData.name.trim() || !formData.message.trim()) {
       alert("Enter name and message first!");
       return;
@@ -585,24 +641,141 @@ function ViewDetail() {
     setShowRequestBtn(true);
   };
 
-  const handleSendEmail = (e) => {
-    e.preventDefault();
-    alert("Message Sent!");
-  };
+  const handleSendEmail = (e) => {
+    e.preventDefault();
+    
+    if (!formData.name.trim() || !formData.message.trim()) {
+      alert("Please fill in your name and message first!");
+      return;
+    }
 
-  const handleRequestTour = () => {
+    // Create application/inquiry object
+    const currentUser = loggedUser || formData.name || 'Anonymous User';
+    
+    const application = {
+      id: `APP-${Date.now()}`,
+      property_id: propertyData.houseId,
+      property_title: propertyData.title,
+      applicant_name: currentUser,
+      requester_name: currentUser, // Add this field for approval system compatibility
+      applicant_message: formData.message,
+      requester_message: formData.message, // Add this field for approval system compatibility  
+      applicant_email: formData.email || 'user@example.com',
+      requester_email: formData.email || 'user@example.com', // Add this field for approval system compatibility
+      user_type: formData.userType,
+      reason_to_buy: formData.reasonToBuy,
+      status: 'pending',
+      request_type: 'inquiry',
+      created_at: new Date().toISOString(),
+      // Property details for reference
+      properties: {
+        title: propertyData.title
+      }
+    };
+
+    // Save to localStorage (same storage as tour requests)
+    try {
+      // Add the inquiry request with proper fields for approval system
+      const existingRequests = getStoredJSON('allTourRequests', []);
+      existingRequests.push(application);
+      localStorage.setItem('allTourRequests', JSON.stringify(existingRequests));
+      
+      // Save to applied properties with user identification - use logged-in user, not form name
+      const userAppliedKey = `appliedProperties_${currentUser.replace(/\s+/g, '_')}`;
+      const appliedProperties = getStoredJSON(userAppliedKey, []);
+      
+      const propertyApplication = {
+        id: propertyData.houseId,
+        title: propertyData.title,
+        priceText: propertyData.priceText,
+        location: propertyData.location,
+        applied_at: new Date().toISOString(),
+        applicant_name: currentUser, // Track who applied
+        status: 'Pending' // Initialize with Pending status
+      };
+      
+      // Check if already applied to avoid duplicates
+      const alreadyApplied = appliedProperties.some(app => app.id === propertyData.houseId);
+      if (!alreadyApplied) {
+        appliedProperties.push(propertyApplication);
+        localStorage.setItem(userAppliedKey, JSON.stringify(appliedProperties));
+        
+        // ALSO save to a general applied properties list for easier retrieval
+        const allApplications = getStoredJSON('allApplications', []);
+        allApplications.push({
+          ...propertyApplication,
+          user_key: userAppliedKey
+        });
+        localStorage.setItem('allApplications', JSON.stringify(allApplications));
+        
+        console.log(`✅ Applied property saved for user: ${currentUser}`);
+        console.log(`📍 Saved to key: ${userAppliedKey}`);
+        console.log(`✅ Application request created with proper approval fields`);
+      } else {
+        console.log(`ℹ️ User ${currentUser} already applied for this property`);
+      }
+      
+      console.log('✅ Application saved:', application);
+      alert("Application Sent! Owner will contact you soon.");
+      
+      // Reset form
+      setFormData({
+        userType: '',
+        reasonToBuy: '',
+        name: '',
+        message: '',
+        countryCode: '+91',
+        email: ''
+      });
+    } catch (error) {
+      console.error('Error saving application:', error);
+      alert('Error saving application. Please try again.');
+    }
+  };  const handleRequestTour = () => {
     if (selectedDate === 'Select Date' || selectedTime === 'Select Time') {
         alert("Please select both a date and a time slot.");
         return;
     }
-    alert(`Tour Request Sent for ${selectedDate} at ${selectedTime}! Owner will contact you.`);
-    setSelectedDate('Select Date');
-    setSelectedTime('Select Time');
-    setShowDateMenu(false);
-    setShowTimeMenu(false);
-  };
 
-  const propertyStatus =
+    // Create tour request object
+    const tourRequest = {
+      id: `TOUR-${Date.now()}`,
+      property_id: propertyData.houseId,
+      property_title: propertyData.title,
+      requester_name: loggedUser || formData.name,
+      requester_message: formData.message,
+      requester_email: formData.email || 'user@example.com',
+      requested_date: selectedDate,
+      requested_time: selectedTime,
+      status: 'pending',
+      request_type: 'tour',
+      created_at: new Date().toISOString(),
+      // Property details for reference
+      properties: {
+        title: propertyData.title
+      }
+    };
+
+    // Save to localStorage
+    try {
+      const existingRequests = getStoredJSON('allTourRequests', []);
+      existingRequests.push(tourRequest);
+      localStorage.setItem('allTourRequests', JSON.stringify(existingRequests));
+      
+      console.log('✅ Tour request saved:', tourRequest);
+      alert(`Tour Request Sent for ${selectedDate} at ${selectedTime}! Owner will contact you.`);
+      
+      // Reset form
+      setSelectedDate('Select Date');
+      setSelectedTime('Select Time');
+      setShowDateMenu(false);
+      setShowTimeMenu(false);
+      setFormData({ ...formData, name: '', message: '' });
+    } catch (error) {
+      console.error('Error saving tour request:', error);
+      alert('Error saving tour request. Please try again.');
+    }
+  };  const propertyStatus =
     propertyData.priceText?.toLowerCase().includes("/month") ? "Rent" : "Sale";
 
   return (

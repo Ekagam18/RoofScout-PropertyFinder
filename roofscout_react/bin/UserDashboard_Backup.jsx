@@ -1,30 +1,41 @@
-// import { useEffect, useState } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import { Link } from 'react-router-dom';
-// import { supabase } from "../supabase";
-// import useDarkMode from "../hooks/useDarkMode";
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { supabase } from "../src/supabase";
+import useDarkMode from "../src/hooks/useDarkMode";
 
-// function UserDashboard() {
-//   const [loggedUser, setLoggedUser] = useState('');
-//   const [activeTab, setActiveTab] = useState('appliedHouses');
-//   const [userProfile, setUserProfile] = useState(null);
-//   const [tourRequests, setTourRequests] = useState([]);
-//   const [properties, setProperties] = useState([]);
-//   const [loadingProperties, setLoadingProperties] = useState(true);
-//   const [userId, setUserId] = useState(null);
+function UserDashboard() {
+  const [loggedUser, setLoggedUser] = useState('');
+  const [activeTab, setActiveTab] = useState('appliedHouses');
+  const [userProfile, setUserProfile] = useState(null);
+  const [tourRequests, setTourRequests] = useState([]);
+  const [properties, setProperties] = useState([]);
+  const [loadingProperties, setLoadingProperties] = useState(true);
+  const [userId, setUserId] = useState(null);
+  const [appliedProperties, setAppliedProperties] = useState([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [receivedTourRequests, setReceivedTourRequests] = useState([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
 
-//   const navigate = useNavigate();
-//   const { theme, toggleTheme } = useDarkMode(); // <-- fixed: use toggleTheme
+  const navigate = useNavigate();
+  const { theme, toggleTheme } = useDarkMode();
 
-//   const getStoredJSON = (key, defaultVal = null) => {
-//     try {
-//       const item = localStorage.getItem(key);
-//       return item ? JSON.parse(item) : defaultVal;
-//     } catch (error) {
-//       console.error(`Error parsing JSON from localStorage key "${key}":`, error);
-//       return defaultVal;
-//     }
-//   };
+  const getStoredJSON = (key, defaultVal = null) => {
+    try {
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : defaultVal;
+    } catch (error) {
+      console.error(`Error parsing JSON from localStorage key "${key}":`, error);
+      return defaultVal;
+    }
+  };
+
+  // Tab constants
+  const TABS = {
+    APPLIED_HOUSES: 'appliedHouses',
+    MY_PROPERTIES: 'myProperties', 
+    TOUR_REQUESTS_RECEIVED: 'tourRequestsReceived'
+  };
 
 //   useEffect(() => {
 //     async function loadUser() {
@@ -1399,173 +1410,111 @@ function UserDashboard() {
     };
 
     // --- Tour Request Status Handler (localStorage only) ---
-    // Function to handle applied property status updates directly
-    const handleAppliedPropertyStatus = (applicationId, newStatus) => {
-        try {
-            console.log(`🏠 Updating applied property ${applicationId} to status: ${newStatus}`);
-            
-            const statusMapping = {
-                'accept': 'Approved',
-                'reject': 'Rejected',
-                'Approved': 'Approved',
-                'Rejected': 'Rejected'
-            };
-            const mappedStatus = statusMapping[newStatus] || newStatus;
-            
-            // Find and update the application in user's applied properties
-            const userKey = `appliedProperties_${loggedUser.replace(/\s+/g, '_')}`;
-            const userAppliedProperties = JSON.parse(localStorage.getItem(userKey) || "[]");
-            
-            const updatedAppliedProperties = userAppliedProperties.map(app => {
-                if (app.id === applicationId) {
-                    console.log(`✅ Found application ${applicationId}, updating status from "${app.status}" to "${mappedStatus}"`);
-                    return { ...app, status: mappedStatus };
-                }
-                return app;
-            });
-            
-            // Save updated applied properties
-            localStorage.setItem(userKey, JSON.stringify(updatedAppliedProperties));
-            
-            // Also update in allApplications if it exists
-            const allApplications = JSON.parse(localStorage.getItem("allApplications") || "[]");
-            if (allApplications.length > 0) {
-                const updatedAllApplications = allApplications.map(app => {
-                    if (app.id === applicationId && app.applicant_name === loggedUser) {
-                        return { ...app, status: mappedStatus };
-                    }
-                    return app;
-                });
-                localStorage.setItem("allApplications", JSON.stringify(updatedAllApplications));
-            }
-            
-            console.log(`✅ Applied property ${applicationId} status updated to: ${mappedStatus}`);
-            
-            // Refresh the component to show updated status
-            window.location.reload();
-            
-        } catch (error) {
-            console.error('❌ Error updating applied property status:', error);
-            alert('Error updating application status. Please try again.');
-        }
-    };
-
     const handleTourRequestStatus = (requestId, newStatus) => {
         try {
             // 1. Update tour requests in localStorage
             const allTourRequests = JSON.parse(localStorage.getItem("allTourRequests") || "[]");
             const updatedRequests = allTourRequests.map(req =>
-                req.id === requestId ? { ...req, status: newStatus } : req
+                req.id === requestId ? { 
+                    ...req, 
+                    status: newStatus,
+                    updated_at: new Date().toISOString(),
+                    updated_by: loggedUser || 'Property Owner'
+                } : req
             );
             localStorage.setItem("allTourRequests", JSON.stringify(updatedRequests));
 
-            // 2. Find the corresponding tour request to get applicant info
-            const tourRequest = allTourRequests.find(req => req.id === requestId);
-            
-            if (tourRequest) {
-                console.log('🎯 Found tour request:', tourRequest);
+            // 2. Update applied properties status if this is a rental application
+            if (requestId.startsWith('APP-')) {
+                console.log(`🏠 Updating applied property status for ${requestId}`);
                 
-                // 3. Update corresponding property application status
-                const applicantName = tourRequest.requester_name;
-                const propertyId = tourRequest.property_id;
+                // Find the request to get the applicant name
+                const targetRequest = updatedRequests.find(req => req.id === requestId);
+                console.log(`🔍 Target request found:`, targetRequest);
                 
-                console.log(`👤 Applicant name: "${applicantName}"`);
-                console.log(`🏠 Property ID: "${propertyId}"`);
-                console.log(`📊 New status: "${newStatus}"`);
-                console.log(`🆔 Request ID: "${requestId}"`);
-                console.log('📋 Full tour request object:', JSON.stringify(tourRequest, null, 2));
-                
-                if (applicantName && propertyId) {
-                    console.log(`🔍 Looking for applied properties for user: "${applicantName}" and property: "${propertyId}"`);
+                if (targetRequest && targetRequest.requester_name) {
+                    const applicantName = targetRequest.requester_name;
+                    const userKey = `appliedProperties_${applicantName.replace(/\s+/g, '_')}`;
                     
-                    // First, let's see what's actually in localStorage
-                    const allKeys = Object.keys(localStorage);
-                    console.log('🗝️ All localStorage keys:', allKeys);
-                    const appliedKeys = allKeys.filter(k => k.startsWith('appliedProperties_'));
-                    console.log('📋 Applied properties keys:', appliedKeys);
+                    console.log(`👤 Updating applied properties for user: ${applicantName}`);
+                    console.log(`🔑 Using key: ${userKey}`);
                     
-                    // Try multiple user key formats to ensure we find the right user
-                    const possibleUserKeys = [
-                        `appliedProperties_${applicantName}`,
-                        `appliedProperties_${applicantName.replace(/\s+/g, '_')}`,
-                        `appliedProperties_${applicantName.toLowerCase()}`,
-                        `appliedProperties_${applicantName.toLowerCase().replace(/\s+/g, '_')}`
-                    ];
+                    // Update user-specific applied properties
+                    const userAppliedProperties = JSON.parse(localStorage.getItem(userKey) || "[]");
+                    console.log(`📋 Current applied properties:`, userAppliedProperties);
                     
-                    console.log('🔑 Trying user keys:', possibleUserKeys);
-                    
-                    let updated = false;
-                    
-                    // Try each possible user key
-                    for (const userKey of possibleUserKeys) {
-                        const userAppliedProperties = JSON.parse(localStorage.getItem(userKey) || "[]");
+                    if (userAppliedProperties.length === 0) {
+                        console.log(`⚠️ No applied properties found for ${applicantName}, checking all keys...`);
                         
-                        console.log(`📝 Checking key "${userKey}": found ${userAppliedProperties.length} applications`);
-                        
-                        if (userAppliedProperties.length > 0) {
-                            console.log(`📋 Found applied properties for key: ${userKey}`, userAppliedProperties);
-                            
-                            const updatedUserAppliedProperties = userAppliedProperties.map(app => {
-                                console.log(`🔍 Checking application ID "${app.id}" against property ID "${propertyId}"`);
-                                if (app.id === propertyId) {
-                                    console.log(`✅ MATCH FOUND! Updating application status from "${app.status}" to "${newStatus}"`);
-                                    const statusMapping = {
-                                        'accepted': 'Approved',
-                                        'rejected': 'Rejected',
-                                        'Approved': 'Approved',
-                                        'Rejected': 'Rejected'
-                                    };
-                                    const newStatusMapped = statusMapping[newStatus] || newStatus;
-                                    console.log(`📝 Status mapping: "${newStatus}" -> "${newStatusMapped}"`);
-                                    return { ...app, status: newStatusMapped };
-                                }
-                                return app;
-                            });
-                            
-                            localStorage.setItem(userKey, JSON.stringify(updatedUserAppliedProperties));
-                            updated = true;
-                            console.log(`✅ Updated applied properties for ${userKey}:`, updatedUserAppliedProperties);
-                        }
-                    }
-                    
-                    // Also update in allApplications if it exists
-                    const allApplications = JSON.parse(localStorage.getItem("allApplications") || "[]");
-                    if (allApplications.length > 0) {
-                        const updatedAllApplications = allApplications.map(app => {
-                            if (app.id === propertyId && app.applicant_name === applicantName) {
-                                const statusMapping = {
-                                    'accepted': 'Approved',
-                                    'rejected': 'Rejected',
-                                    'Approved': 'Approved',
-                                    'Rejected': 'Rejected'
-                                };
-                                return { ...app, status: statusMapping[newStatus] || newStatus };
+                        // Check all possible keys for this user
+                        Object.keys(localStorage).forEach(key => {
+                            if (key.includes('appliedProperties') && key.includes(applicantName)) {
+                                console.log(`🔍 Found potential key: ${key}`);
+                                const apps = JSON.parse(localStorage.getItem(key) || "[]");
+                                console.log(`📋 Apps in ${key}:`, apps);
                             }
-                            return app;
                         });
-                        localStorage.setItem("allApplications", JSON.stringify(updatedAllApplications));
-                        console.log(`✅ Updated allApplications`);
                     }
                     
-                    if (updated) {
-                        console.log(`✅ Updated property application status for ${applicantName} on property ${propertyId} to ${newStatus}`);
+                    const displayStatus = newStatus === 'accepted' ? 'Approved' : 
+                                        newStatus === 'rejected' ? 'Rejected' : 'Pending';
+                    
+                    // Update ALL applied properties for this user (since there might be only one)
+                    const updatedAppliedProperties = userAppliedProperties.map(app => {
+                        console.log(`🔄 Updating "${app.title}" from "${app.status}" to "${displayStatus}"`);
+                        return {
+                            ...app,
+                            status: displayStatus,
+                            updated_at: new Date().toISOString(),
+                            updated_by: loggedUser || 'Property Owner'
+                        };
+                    });
+                    
+                    if (updatedAppliedProperties.length > 0) {
+                        localStorage.setItem(userKey, JSON.stringify(updatedAppliedProperties));
+                        console.log(`✅ Updated ${updatedAppliedProperties.length} applied properties for user ${applicantName}`);
                     } else {
-                        console.log(`⚠️ No applied properties found for user ${applicantName} and property ${propertyId}`);
+                        console.log(`❌ No applied properties to update for ${applicantName}`);
                     }
+                    
+                    // Also update global applied properties as backup
+                    const globalAppliedProperties = JSON.parse(localStorage.getItem('appliedProperties') || "[]");
+                    const updatedGlobalAppliedProperties = globalAppliedProperties.map(app => {
+                        if (app.applicant_name === applicantName) {
+                            console.log(`🌐 Updating global property "${app.title}" for ${applicantName}`);
+                            return {
+                                ...app,
+                                status: displayStatus,
+                                updated_at: new Date().toISOString(),
+                                updated_by: loggedUser || 'Property Owner'
+                            };
+                        }
+                        return app;
+                    });
+                    localStorage.setItem('appliedProperties', JSON.stringify(updatedGlobalAppliedProperties));
+                    console.log(`✅ Updated global applied properties`);
                 }
             }
 
-            // 4. Update local tour requests state
+            // 3. Update local state
             setReceivedTourRequests(prevRequests => 
                 prevRequests.map(req =>
-                    req.id === requestId ? { ...req, status: newStatus } : req
+                    req.id === requestId ? { 
+                        ...req, 
+                        status: newStatus,
+                        updated_at: new Date().toISOString(),
+                        updated_by: loggedUser || 'Property Owner'
+                    } : req
                 )
             );
 
-            // 5. Trigger a notification for users to refresh
-            alert(`Tour request ${newStatus}! The applicant should refresh their dashboard to see the updated status.`);
+            console.log(`Request ${requestId} status updated to ${newStatus}`);
+            console.log(`Updated by: ${loggedUser || 'Property Owner'} at ${new Date().toLocaleString()}`);
 
-            console.log(`✅ Request ${requestId} status updated to ${newStatus}`);
+            // Force page refresh to ensure UI updates
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
 
         } catch (err) {
             console.error("Failed to update tour request status:", err);
@@ -1656,19 +1605,6 @@ function UserDashboard() {
                             <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
                                 Requested by: <span className="font-semibold text-gray-800 dark:text-gray-200">{req.requester_name}</span>
                             </p>
-                            
-                            {/* Payment Status Notification */}
-                            {req.payment_status === 'Paid' && (
-                                <div className="mb-4 p-3 bg-gradient-to-r from-green-100 to-emerald-100 border border-green-200 rounded-lg">
-                                    <div className="flex items-center gap-2">
-                                        <i className="ri-money-dollar-circle-fill text-green-600 text-xl"></i>
-                                        <div>
-                                            <p className="text-green-800 font-semibold text-sm">Payment Received!</p>
-                                            <p className="text-green-700 text-xs">₹5,000 booking amount paid on {new Date(req.paymentDate).toLocaleDateString()}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                             
                             {isTourRequest ? (
                                 <div className="flex flex-wrap items-center gap-4 text-sm mb-3">
@@ -1823,41 +1759,57 @@ function UserDashboard() {
         // Method 3: Also check old global applied properties as fallback
         if (appliedProperties.length === 0) {
             const globalApplied = getStoredJSON('appliedProperties', []);
-            appliedProperties = globalApplied; // Show all if no user-specific found
+            appliedProperties = globalApplied.filter(app => app.applicant_name === loggedUser); // Filter by user
+        }
+        
+        // Debug: Log applied properties status
+        console.log(`📋 Applied Properties for ${loggedUser}:`);
+        appliedProperties.forEach((app, index) => {
+            console.log(`  ${index + 1}. ${app.title}: Status = "${app.status || 'Pending'}"`);
+            console.log(`     Last updated: ${app.updated_at ? new Date(app.updated_at).toLocaleString() : 'Never'}`);
+        });
+        
+        // Force refresh applied properties data to get latest status
+        const refreshedCurrentUserKey = `appliedProperties_${loggedUser.replace(/\s+/g, '_')}`;
+        const refreshedAppliedProperties = JSON.parse(localStorage.getItem(refreshedCurrentUserKey) || '[]');
+        if (refreshedAppliedProperties.length > 0) {
+            appliedProperties = refreshedAppliedProperties;
+            console.log(`🔄 Refreshed applied properties: ${appliedProperties.length} items`);
         }
         
         // Get tour requests made by this user (filter by applicant/requester name)
-        const allTourRequests = getStoredJSON('allTourRequests', []); 
+        // Force fresh data fetch to ensure real-time status updates
+        const allTourRequests = JSON.parse(localStorage.getItem('allTourRequests') || '[]'); 
         const myTourRequests = allTourRequests.filter(req => 
             req.requester_name === loggedUser || 
             req.applicant_name === loggedUser ||
             req.buyerName === loggedUser // Keep original logic for backward compatibility
         );
         
+        // Debug: Log raw status values for troubleshooting
+        myTourRequests.forEach((req, index) => {
+            console.log(`Request ${index + 1} (${req.id}):`, {
+                property: req.property_title || req.properties?.title,
+                rawStatus: req.status,
+                normalizedStatus: req.status?.toLowerCase(),
+                updatedAt: req.updated_at,
+                updatedBy: req.updated_by,
+                fullRequest: req
+            });
+            
+            // Alert if status mismatch detected
+            if (req.updated_by && req.updated_at && req.status === 'pending') {
+                console.warn(`⚠️ STATUS MISMATCH DETECTED for ${req.id}:`, {
+                    status: req.status,
+                    hasUpdateInfo: true,
+                    updatedBy: req.updated_by
+                });
+            }
+        });
+        
         console.log(`Applied properties for user ${loggedUser}:`, appliedProperties.length);
         console.log(`Tour requests by user ${loggedUser}:`, myTourRequests.length);
         console.log('Available localStorage keys:', Object.keys(localStorage).filter(k => k.includes('applied')));
-        
-        // Debug: Log the actual applied properties with their status
-        if (appliedProperties.length > 0) {
-            console.log('Applied properties details:', appliedProperties.map(app => ({
-                id: app.id,
-                title: app.title,
-                status: app.status,
-                statusType: typeof app.status,
-                applicant_name: app.applicant_name,
-                fullObject: app
-            })));
-            
-            // Check if any have approved status
-            const approvedApps = appliedProperties.filter(app => 
-                app.status === 'Approved' || app.status === 'approved'
-            );
-            console.log('Approved applications count:', approvedApps.length);
-            if (approvedApps.length > 0) {
-                console.log('Approved applications:', approvedApps);
-            }
-        }
 
         if (appliedProperties.length === 0 && myTourRequests.length === 0) {
             return (
@@ -1884,6 +1836,14 @@ function UserDashboard() {
                             <span className="ml-auto text-sm text-gray-500 bg-gray-100 dark:bg-gray-800 dark:text-gray-300 px-3 py-1 rounded-full font-semibold">
                                 {myTourRequests.length} {myTourRequests.length === 1 ? 'Request' : 'Requests'}
                             </span>
+                            <button 
+                                onClick={() => window.location.reload()} 
+                                className="ml-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-lg text-sm transition-all flex items-center gap-1"
+                                title="Refresh status updates"
+                            >
+                                <i className="ri-refresh-line"></i>
+                                Refresh
+                            </button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {myTourRequests.map(req => (
@@ -1905,13 +1865,28 @@ function UserDashboard() {
                                                 </p>
                                             </div>
                                             <div className="mt-3">
-                                                <span className={`inline-block text-xs font-bold px-4 py-2 rounded-lg shadow-sm ${
-                                                    req.status === 'Approved' ? 'bg-gradient-to-r from-green-400 to-green-500 text-white' :
-                                                    req.status === 'Rejected' ? 'bg-gradient-to-r from-red-400 to-red-500 text-white' :
-                                                    'bg-gradient-to-r from-yellow-400 to-orange-400 text-white'
-                                                }`}>
-                                                    {req.status}
-                                                </span>
+                                                {(() => {
+                                                    const normalizedStatus = req.status?.toLowerCase();
+                                                    const statusDisplay = normalizedStatus === 'accepted' ? 'Approved' : normalizedStatus === 'rejected' ? 'Rejected' : 'Pending';
+                                                    const statusColor = 
+                                                        normalizedStatus === 'accepted' ? 'bg-gradient-to-r from-green-400 to-green-500 text-white' :
+                                                        normalizedStatus === 'rejected' ? 'bg-gradient-to-r from-red-400 to-red-500 text-white' :
+                                                        'bg-gradient-to-r from-yellow-400 to-orange-400 text-white';
+                                                    
+                                                    return (
+                                                        <div className="space-y-2">
+                                                            <span className={`inline-block text-xs font-bold px-4 py-2 rounded-lg shadow-sm ${statusColor}`}>
+                                                                {statusDisplay}
+                                                            </span>
+                                                            {req.updated_at && (
+                                                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                                                    Last updated: {new Date(req.updated_at).toLocaleString()}
+                                                                    {req.updated_by && ` by ${req.updated_by}`}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                     </div>
@@ -1930,27 +1905,13 @@ function UserDashboard() {
                                     <i className="ri-file-list-3-line text-white text-xl"></i>
                                 </div>
                                 <h4 className="font-bold text-xl text-gray-900 dark:text-gray-100">Rental Applications</h4>
-                                
-
-
                                 <span className="ml-auto text-sm text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full font-semibold">
                                     {appliedProperties.length} {appliedProperties.length === 1 ? 'Application' : 'Applications'}
                                 </span>
                             </div>
                         )}
                         <div className="grid grid-cols-1 gap-5">
-                            {appliedProperties.map((application, index) => {
-                                // Debug each application
-                                console.log(`🏠 Rendering application ${index}:`, {
-                                    id: application.id,
-                                    title: application.title,
-                                    status: application.status,
-                                    statusType: typeof application.status,
-                                    isApproved: application.status === 'Approved' || application.status === 'approved',
-                                    fullApplication: application
-                                });
-                                
-                                return (
+                            {appliedProperties.map((application, index) => (
                                 <div key={application.id || index} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                                     <div className="p-6">
                                         <div className="flex flex-col sm:flex-row gap-5 items-start">
@@ -1965,17 +1926,15 @@ function UserDashboard() {
                                                 </p>
                                                 <div className="flex flex-wrap items-center gap-3">
                                                     <span className={`text-xs font-bold px-4 py-2 rounded-lg shadow-sm ${
-                                                        (application.status === 'Approved' || application.status === 'approved') ? 'bg-gradient-to-r from-green-400 to-green-500 text-white' :
-                                                        (application.status === 'Paid' || application.status === 'paid') ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-white' :
-                                                        (application.status === 'Rejected' || application.status === 'rejected') ? 'bg-gradient-to-r from-red-400 to-red-500 text-white' :
+                                                        application.status === 'Approved' ? 'bg-gradient-to-r from-green-400 to-green-500 text-white' :
+                                                        application.status === 'Paid' ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-white' :
+                                                        application.status === 'Rejected' ? 'bg-gradient-to-r from-red-400 to-red-500 text-white' :
                                                         application.status === 'Viewed' ? 'bg-gradient-to-r from-blue-400 to-indigo-500 text-white' :
                                                         'bg-gradient-to-r from-yellow-400 to-orange-400 text-white'
                                                     }`}>
                                                         {application.status || 'Pending'}
                                                     </span>
-                                                    
-                                                    {/* Pay Now button for approved applications */}
-                                                    {(application.status === 'Approved' || application.status === 'approved') && (
+                                                    {application.status === 'Approved' && (
                                                         <Link 
                                                             to={`/payment/${application.id}`} 
                                                             className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 hover:shadow-lg transform hover:scale-105 flex items-center gap-2"
@@ -1984,20 +1943,10 @@ function UserDashboard() {
                                                             Pay Now
                                                         </Link>
                                                     )}
-
-                                                    {/* Payment complete indicator */}
-                                                    {(application.status === 'Paid' || application.status === 'paid') && (
+                                                    {application.status === 'Paid' && (
                                                         <div className="flex items-center gap-2 bg-gradient-to-r from-cyan-50 to-blue-50 px-4 py-2 rounded-xl border border-cyan-200">
                                                             <i className="ri-checkbox-circle-fill text-cyan-600 text-lg"></i>
                                                             <span className="text-sm font-bold text-cyan-700">Payment Complete</span>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Rejected status indicator */}
-                                                    {(application.status === 'Rejected' || application.status === 'rejected') && (
-                                                        <div className="flex items-center gap-2 bg-gradient-to-r from-red-50 to-red-50 px-4 py-2 rounded-xl border border-red-200">
-                                                            <i className="ri-close-circle-fill text-red-600 text-lg"></i>
-                                                            <span className="text-sm font-bold text-red-700">Application Rejected</span>
                                                         </div>
                                                     )}
                                                 </div>
@@ -2005,8 +1954,7 @@ function UserDashboard() {
                                         </div>
                                     </div>
                                 </div>
-                                );
-                            })}
+                            ))}
                         </div>
                     </div>
                 )}
